@@ -8,6 +8,7 @@ export interface SearchReport { result: Payload | null; diagnostics: Diagnostic[
 const labels: Record<string, string> = { qqmusic: 'QQ音乐', netease: '网易云', lrclib: 'LRCLIB', custom: '自定义歌词源', lrcapi: 'LrcApi' };
 const promotional = /(?:正版|车载|车用|无损音乐|音乐下载|微信|公众号|WX\s*[:：]|https?:\/\/|www\.)/i;
 const compact = (s: string) => s.toLowerCase().replace(/[\s\p{P}\p{S}]/gu, '');
+class NoLyrics extends Error {}
 
 export function normalizeMetadata(title: string, artist: string, album: string, duration: number): Metadata {
   title = title.trim().replace(/\.(?:mp3|flac|wav|ape|m4a|aac|dsf|dff)$/i, '').replace(/^\s*\d{1,3}\s*[.、)）_-]\s*/, '');
@@ -74,8 +75,9 @@ async function request(url: string, init: RequestInit = {}): Promise<any> {
 function rank(c: Candidate, q: Metadata): number {
   const versions = /live|现场|伴奏|翻唱|remix|karaoke/ig;
   if ((c.title.match(versions) || []).join('').toLowerCase() !== (q.title.match(versions) || []).join('').toLowerCase()) return 0;
+  const core = (value: string) => compact(value.replace(/\s*[(（\[【][^()（）\[\]【】]*[)）\]】]\s*$/, ''));
   const a = compact(c.title), b = compact(q.title);
-  if (!a || !b || !(a === b || a.startsWith(b) || b.startsWith(a))) return 0;
+  if (!a || !b || core(c.title) !== core(q.title)) return 0;
   // Without a known artist, accept only an exact title and a close duration.
   if (!q.artist && (a !== b || !q.duration || !c.duration || Math.abs(c.duration - q.duration) > 8)) return 0;
   if (q.artist && (!c.artist || !compact(c.artist).includes(compact(q.artist)))) return 0;
@@ -134,6 +136,7 @@ async function searchSource(source: string, cfg: LyricsConfig, q: Metadata): Pro
     candidates = data.map((v: any) => ({ id: String(v.id), title: v.trackName || '', artist: v.artistName || '', album: v.albumName || '', duration: Number(v.duration) || 0, lyric: v.syncedLyrics || v.plainLyrics }));
   }
   const ranked = candidates.filter(c => rank(c, q) > 0).sort((a, b) => rank(b, q) - rank(a, q));
+  if (!ranked.length) throw new NoLyrics(candidates.length ? '有候选，但歌名、歌手、版本或时长不符' : '搜索未返回匹配歌曲');
   for (const candidate of ranked.slice(0, 2)) {
     let result: Payload;
     if (source === 'qqmusic') {
@@ -145,7 +148,7 @@ async function searchSource(source: string, cfg: LyricsConfig, q: Metadata): Pro
     } else result = { lyric: candidate.lyric || '' };
     if (result.lyric.trim()) return { ...result, source };
   }
-  return null;
+  throw new NoLyrics('已匹配歌曲，但该版本未提供歌词');
 }
 
 const inFlight = new Map<string, Promise<SearchReport>>();
@@ -161,6 +164,7 @@ export function searchAllLyrics(cfg: LyricsConfig, title: string, artist: string
         const result = q.title ? await searchSource(source, cfg, q) : null;
         return { result, diagnostic: { source, status: result ? 'success' : 'not_found', reason: result ? '已找到歌词' : q.title ? '未找到歌名、歌手和时长相符的歌词' : '缺少有效歌名' } };
       } catch (e) {
+        if (e instanceof NoLyrics) return { result: null, diagnostic: { source, status: 'not_found', reason: e.message } };
         const raw = e instanceof Error ? e.message : '';
         const reason = /timeout|deadline|timed out/i.test(raw) ? '请求超时' : /HTTP \d{3}|业务错误码|响应|搜索/.test(raw) ? raw.slice(0, 120) : '网络连接失败';
         return { result: null, diagnostic: { source, status: 'error', reason } };
