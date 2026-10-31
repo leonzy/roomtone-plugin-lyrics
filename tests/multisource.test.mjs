@@ -70,6 +70,44 @@ test('wrong artists and different live versions are rejected instead of borrowin
   assert.equal(report.diagnostics[0].status, 'not_found');
   assert.equal(f.calls.length, 2);
 });
+
+test('same-title same-duration candidates must still match the requested artist', async () => {
+  const f = fixture(url => url.includes('/api/search') ? { data: { code: 200, result: { songs: [
+    { id: 1, name: '同名歌', artists: [{ name: '歌手乙' }], duration: 200000 },
+    { id: 2, name: '同名歌', artists: [{ name: '歌手甲' }], duration: 200000 },
+  ] } } } : { data: { code: 200, lrc: { lyric: '[00:01.00]fixture' } } });
+  const report = await f.searchAllLyrics({ ...config, provider: 'netease' }, '同名歌', '歌手甲', '', 200);
+  assert.equal(report.result.source, 'netease');
+  assert.match(f.calls.at(-1).url, /id=2(?:&|$)/);
+});
+
+test('artist substring matches are rejected even if title and duration are identical', async () => {
+  const f = fixture(url => url.includes('/api/search') ? { data: { code: 200, result: { songs: [
+    { id: 1, name: '同名歌', artists: [{ name: '李娜娜' }], duration: 200000 },
+  ] } } } : { data: { code: 200, lrc: { lyric: '[00:01.00]wrong artist fixture' } } });
+  const report = await f.searchAllLyrics({ ...config, provider: 'netease' }, '同名歌', '李娜', '', 200);
+  assert.equal(report.result, null);
+  assert.ok(f.calls.every(call => !call.url.includes('/api/song/lyric')));
+});
+
+test('a correct search candidate cannot authorize a downloaded lyric for a different song', async () => {
+  const f = fixture(url => url.includes('/api/search') ? { data: { code: 200, result: { songs: [
+    { id: 1, name: '一无所有', artists: [{ name: '崔健' }], duration: 337000 },
+  ] } } } : { data: { code: 200, lrc: { lyric: '[ti:错]\n[ar:崔健]\n[00:01.00]fixture' } } });
+  const report = await f.searchAllLyrics({ ...config, provider: 'netease' }, '一无所有', '崔健', '', 337);
+  assert.equal(report.result, null);
+  assert.match(f.diagnosticMessage(report), /歌词内标注.*不符/);
+});
+
+test('missing artists never permit automatic adoption using only title and duration', async () => {
+  const f = fixture(() => ({ data: { code: 200, result: { songs: [
+    { id: 1, name: '同名歌', artists: [{ name: '不确定的歌手' }], duration: 200000 },
+  ] }, lrc: { lyric: '[00:01.00]unverified fixture' } } }));
+  const report = await f.searchAllLyrics(config, '同名歌', '', '', 200);
+  assert.equal(report.result, null);
+  assert.match(f.diagnosticMessage(report), /缺少.*歌手/);
+  assert.equal(f.calls.length, 0);
+});
 test('failures distinguish malformed data, HTTP errors and timeouts, without leaking upstream secrets', async () => {
   const f = fixture(url => {
     if (url.includes('musicu')) throw new Error('context deadline exceeded token=PRIVATE');

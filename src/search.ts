@@ -5,7 +5,7 @@ interface Candidate extends Metadata { id: string; lyric?: string; tlyric?: stri
 interface Payload { lyric: string; tlyric?: string; rlyric?: string; source?: string }
 export interface Diagnostic { source: string; status: string; reason: string }
 export interface SearchReport { result: Payload | null; diagnostics: Diagnostic[]; query: Metadata }
-const labels: Record<string, string> = { qqmusic: 'QQ音乐', netease: '网易云', lrclib: 'LRCLIB', custom: '自定义歌词源', lrcapi: 'LrcApi' };
+const labels: Record<string, string> = { metadata: '歌曲信息', qqmusic: 'QQ音乐', netease: '网易云', lrclib: 'LRCLIB', custom: '自定义歌词源', lrcapi: 'LrcApi' };
 const promotional = /(?:正版|车载|车用|无损音乐|音乐下载|微信|公众号|WX\s*[:：]|https?:\/\/|www\.)/i;
 const compact = (s: string) => s.toLowerCase().replace(/[\s\p{P}\p{S}]/gu, '');
 class NoLyrics extends Error {}
@@ -88,9 +88,10 @@ function rank(c: Candidate, q: Metadata): number {
   const core = (value: string) => compact(value.replace(/\s*[(（\[【][^()（）\[\]【】]*[)）\]】]\s*$/, ''));
   const a = compact(c.title), b = compact(q.title);
   if (!a || !b || core(c.title) !== core(q.title)) return 0;
-  // Without a known artist, accept only an exact title and a close duration.
-  if (!q.artist && (a !== b || !q.duration || !c.duration || Math.abs(c.duration - q.duration) > 8)) return 0;
-  if (q.artist && (!c.artist || !compact(c.artist).includes(compact(q.artist)))) return 0;
+  // A close duration cannot identify the performer of a same-title song.
+  if (!q.artist || !c.artist) return 0;
+  const artists = (value: string) => value.split(/\s*(?:\/|、|;|；|&|＆|\bfeat\.?\s|\bfeaturing\s)\s*/i).map(compact).filter(Boolean);
+  if (compact(c.artist) !== compact(q.artist) && !artists(q.artist).every(name => artists(c.artist).includes(name))) return 0;
   if (q.duration && c.duration && Math.abs(c.duration - q.duration) > 20) return 0;
   return (a === b ? 1 : 0.75) + (q.duration && c.duration ? Math.max(0, 1 - Math.abs(c.duration - q.duration) / 20) : 0);
 }
@@ -122,6 +123,7 @@ async function neteaseSearch(q: Metadata): Promise<Candidate[]> {
 }
 
 async function searchSource(source: string, cfg: LyricsConfig, q: Metadata): Promise<Payload | null> {
+  if (!q.artist) throw new NoLyrics('缺少可信歌手信息，无法区分同名歌曲；请完善歌手后重试');
   let candidates: Candidate[];
   if (source === 'qqmusic' || source === 'netease') {
     candidates = await (source === 'qqmusic' ? qqSearch(q) : neteaseSearch(q));
@@ -147,6 +149,7 @@ async function searchSource(source: string, cfg: LyricsConfig, q: Metadata): Pro
   }
   const ranked = candidates.filter(c => rank(c, q) > 0).sort((a, b) => rank(b, q) - rank(a, q));
   if (!ranked.length) throw new NoLyrics(candidates.length ? '有候选，但歌名、歌手、版本或时长不符' : '搜索未返回匹配歌曲');
+  let conflictingHeaders = false;
   for (const candidate of ranked.slice(0, 2)) {
     let result: Payload;
     if (source === 'qqmusic') {
@@ -156,8 +159,16 @@ async function searchSource(source: string, cfg: LyricsConfig, q: Metadata): Pro
       const data = await request('https://music.163.com/api/song/lyric?' + new URLSearchParams({ id: candidate.id, lv: '-1', tv: '-1', rv: '-1' }), { headers: { ...headers, Referer: 'https://music.163.com/' } });
       result = { lyric: data.lrc?.lyric || '', tlyric: data.tlyric?.lyric, rlyric: data.romalrc?.lyric };
     } else result = { lyric: candidate.lyric || '' };
+    const titleHeader = result.lyric.match(/\[ti:([^\]]+)\]/i)?.[1]?.trim();
+    const artistHeader = result.lyric.match(/\[ar:([^\]]+)\]/i)?.[1]?.trim();
+    if ((titleHeader && !rank({ ...candidate, title: titleHeader }, q)) ||
+        (artistHeader && !rank({ ...candidate, artist: artistHeader }, q))) {
+      conflictingHeaders = true;
+      continue;
+    }
     if (result.lyric.trim()) return { ...result, source };
   }
+  if (conflictingHeaders) throw new NoLyrics('歌词内标注的歌名或歌手与当前歌曲不符，已拒绝采用');
   throw new NoLyrics('已匹配歌曲，但该版本未提供歌词');
 }
 
@@ -168,6 +179,7 @@ export function searchAllLyrics(cfg: LyricsConfig, title: string, artist: string
   const running = inFlight.get(key);
   if (running) return running;
   const work = (async () => {
+    if (q.title && !q.artist) return { result: null, diagnostics: [{ source: 'metadata', status: 'invalid_metadata', reason: '缺少可信歌手信息，无法区分同名歌曲；请完善歌手后重试' }], query: q };
     const sources = cfg.provider === 'auto' ? ['qqmusic', 'netease', 'lrclib'] : [cfg.provider];
     const outcomes = await Promise.all(sources.map(async source => {
       try {

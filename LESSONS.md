@@ -1,5 +1,11 @@
 # 开发经验
 
+## LYR-004：同名与相近时长不能代替歌手身份
+
+2026-10-31，检查发现缺少歌手时仍可按精确标题及八秒内时长自动采用，歌手匹配又使用字符串包含，可能混淆“李娜”和“李娜娜”。自动采用现在要求有可信歌手，使用完整名称校验，版本和时长继续限制；无法从标签或文件名明确得到歌手时返回歌曲信息不足，不请求来源猜测。新增同名同长不同歌手、歌手部分包含及缺少歌手回归；后两项在旧实现失败。Seen 1×。
+
+English: On 2026-10-31 review found that title plus a duration within eight seconds could auto-select without an artist, and substring artist matching could confuse distinct names. Automatic adoption now requires trusted complete artist-name matching while retaining version/duration checks. Missing artists produce an explicit metadata diagnostic without provider requests. New regressions cover same-title/same-duration different performers, name substrings and missing artists; the last two fail before the fix. Seen 1×.
+
 ## LYR-003：带空格曲号和括号歌手的文件名也需要保守识别
 
 2026-10-31，leonFN 歌曲 52618 的原始标题为 `02 存在（汪峰）`，歌手为空。宿主空闲回收丢失来源导致立即 404；即使恢复插件，旧清洗仍会保留曲号和括号，妨碍严格候选匹配。对有编号的文件名识别空格曲号及尾部括号歌手，但不把 Live、语言、版本、年份当作歌手，不改普通括号标题与 `24 Hours`、`2.0`。真实输入回归在旧实现失败，修正后通过。Seen 1×。
