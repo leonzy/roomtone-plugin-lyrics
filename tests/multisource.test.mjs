@@ -32,6 +32,11 @@ test('cleans track numbers, audio extension, promotional tags and artist/title f
   assert.equal(f.normalizeMetadata('07.Arnica Montana _ Sea, Sand And Sun.wav', '', '', 449).artist, 'Arnica Montana');
   assert.equal(f.normalizeMetadata('01.A-B.flac', 'Real Artist', '', 200).title, 'A-B');
   assert.equal(f.normalizeMetadata('2.0', 'Real Artist', '', 200).title, '2.0');
+  assert.deepEqual(JSON.parse(JSON.stringify(f.normalizeMetadata('02 存在（汪峰）.flac', '', '', 286))), { title: '存在', artist: '汪峰', album: '', duration: 286 });
+  assert.equal(f.normalizeMetadata('01 存在（Live）', '', '', 286).title, '存在（Live）');
+  assert.equal(f.normalizeMetadata('24 Hours', '', '', 286).title, '24 Hours');
+  assert.equal(f.normalizeMetadata('爱（Love）', '', '', 286).title, '爱（Love）');
+  assert.equal(f.normalizeMetadata('02 存在（2011）', '', '', 286).artist, '');
 });
 test('QQ returns Chinese LRC and translation, with bounded and cancelled streams', async () => {
   const f = fixture((url, opts) => url.includes('musicu') ? { data: { code: 0, search: { code: 0, data: { body: { item_song: { items: [{ mid: 'mid1', name: '明明白白我的心', singer: [{ name: '成龙' }], interval: 297 }] } } } } } } : { data: { code: 0, lyric: Buffer.from('[00:01.00]明明白白我的心').toString('base64'), trans: '[00:01.00]Translation' } });

@@ -11,10 +11,20 @@ const compact = (s: string) => s.toLowerCase().replace(/[\s\p{P}\p{S}]/gu, '');
 class NoLyrics extends Error {}
 
 export function normalizeMetadata(title: string, artist: string, album: string, duration: number): Metadata {
-  title = title.trim().replace(/\.(?:mp3|flac|wav|ape|m4a|aac|dsf|dff)$/i, '').replace(/^\s*\d{1,3}\s*[.、)）_-]\s*(?!\d)/, '');
+  title = title.trim().replace(/\.(?:mp3|flac|wav|ape|m4a|aac|dsf|dff)$/i, '');
+  const trackPrefix = /^\s*(?:\d{1,3}\s*[.、)）_-]\s*(?!\d)|0\d{1,2}\s+|\d{1,3}\s+(?=[\u3400-\u9fff]))/;
+  const numberedFilename = trackPrefix.test(title);
+  title = title.replace(trackPrefix, '');
   title = title.replace(/[【\[](?:[^\]】]*(?:无损|FLAC|MP3|高音质|车载|www\.|https?:)[^\]】]*)[】\]]/gi, '').trim();
   if (promotional.test(artist) || /^(?:unknown|unknown artist|未知|未知歌手|various artists|群星)$/i.test(artist.trim())) artist = '';
   if (promotional.test(album)) album = '';
+  // Some files use "02 Title（Artist）". Only interpret this convention in a
+  // numbered filename with no trusted artist; ordinary parenthesized titles
+  // and version/language/year annotations must keep their meaning.
+  const suffix = numberedFilename && !artist.trim() ? title.match(/^(.+?)\s*[（(]([^（）()]{1,40})[）)]$/) : null;
+  if (suffix && !/[\d]|live|remix|instrumental|karaoke|现场|伴奏|翻唱|版|录音|混音|原唱|合唱|独唱|国语|粤语|英语|纯音乐|ost|主题曲|插曲/i.test(suffix[2])) {
+    title = suffix[1].trim(); artist = suffix[2].trim();
+  }
   const split = title.match(/^(.{1,60}?)\s*[-－—–]\s*(.+)$/) || title.match(/^(.{1,60}?)\s+_\s+(.+)$/);
   if (split && (!artist.trim() || compact(artist) === compact(split[1]))) {
     artist = split[1].trim(); title = split[2].trim();

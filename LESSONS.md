@@ -1,5 +1,11 @@
 # 开发经验
 
+## LYR-003：带空格曲号和括号歌手的文件名也需要保守识别
+
+2026-10-31，leonFN 歌曲 52618 的原始标题为 `02 存在（汪峰）`，歌手为空。宿主空闲回收丢失来源导致立即 404；即使恢复插件，旧清洗仍会保留曲号和括号，妨碍严格候选匹配。对有编号的文件名识别空格曲号及尾部括号歌手，但不把 Live、语言、版本、年份当作歌手，不改普通括号标题与 `24 Hours`、`2.0`。真实输入回归在旧实现失败，修正后通过。Seen 1×。
+
+English: NAS song 52618 was titled `02 存在（汪峰）` with no artist. Provider loss during host idle eviction caused immediate 404; independently, the old normalizer retained the space-separated track number and artist suffix. Numbered filenames now support this convention while preserving Live/language/version/year annotations, ordinary parenthesized titles, `24 Hours` and `2.0`. A regression using the real input fails before and passes after the change. Seen 1×.
+
 ## LYR-002：真实提供商结构、错误分类与检索元数据必须一起验证
 
 - 2026-10-31，leonFN 的“成龙-明明白白我的心”被直接作为标题检索，歌手和专辑为推广信息；原来源仅 LRCLIB，网络异常最终被宿主吞为 404。
