@@ -21,8 +21,9 @@ for (const provider of ['lrclib', 'lrcapi']) {
         require: name => {
           if (name === '@songloft/plugin-sdk') return sdk;
           if (name === './config') return { loadConfig: async () => ({ enabled: true, provider }) };
-          if (name === './lrclib' || name === './lrcapi') return {
-            searchLyrics: async (...args) => { calls.push({ module: name, args }); return { lyric: '[00:01]found' }; },
+          if (name === './search') return {
+            searchAllLyrics: async (...args) => { calls.push({ module: name, args }); return { result: { lyric: '[00:01]found' }, diagnostics: [], query: {} }; },
+            diagnosticMessage: () => '',
           };
           throw new Error(`unexpected module ${name}`);
         },
@@ -32,12 +33,12 @@ for (const provider of ['lrclib', 'lrcapi']) {
       const metadata = { title: '夜 空 + Live', artist: 'A+B & C D', album: 'An Album / 专辑', duration: '180.5' };
       const result = await context.onHTTPRequest({ method: 'GET', path, query: new URLSearchParams(metadata).toString() });
       assert.equal(result.statusCode, 200);
-      assert.equal(calls[0].module, provider === 'lrcapi' ? './lrcapi' : './lrclib');
+      assert.equal(calls[0].module, './search');
       assert.equal(calls[0].args[1], metadata.title);
       assert.equal(calls[0].args[2], metadata.artist);
       if (path === '/lyric-search') {
         assert.equal(calls[0].args[3], metadata.album);
-        if (provider === 'lrclib') assert.equal(calls[0].args[4], 180.5);
+        assert.equal(calls[0].args[4], 180.5);
       }
     });
   }

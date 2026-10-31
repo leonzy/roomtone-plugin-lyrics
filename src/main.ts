@@ -1,8 +1,7 @@
 /// <reference types="@songloft/plugin-sdk" />
 import { createRouter, jsonResponse, parseQuery } from '@songloft/plugin-sdk';
 import type { HTTPRequest } from '@songloft/plugin-sdk';
-import { searchLyrics as searchLrclib } from './lrclib';
-import { searchLyrics as searchLrcapi } from './lrcapi';
+import { searchAllLyrics, diagnosticMessage } from './search';
 import { loadConfig, saveConfig, DEFAULT_CONFIG, type LyricsConfig } from './config';
 
 const router = createRouter();
@@ -44,13 +43,11 @@ router.get('/lyric-search', async (req: HTTPRequest) => {
   const album = q.album || '';
   const duration = parseFloat(q.duration) || 0;
 
-  const result = cfg.provider === 'lrcapi'
-    ? await searchLrcapi(cfg, title, artist, album)
-    : await searchLrclib(cfg, title, artist, album, duration);
-  if (!result) {
-    return jsonResponse(null, 404);
+  const report = await searchAllLyrics(cfg, title, artist, album, duration);
+  if (!report.result) {
+    return jsonResponse({ error: '歌词获取失败', detail: diagnosticMessage(report), diagnostics: report.diagnostics, query: report.query }, report.diagnostics.some(d => d.status === 'error') ? 502 : 404);
   }
-  return jsonResponse(result);
+  return jsonResponse({ ...report.result, diagnostics: report.diagnostics });
 });
 
 router.get('/config', async () => {
@@ -63,8 +60,8 @@ router.put('/config', async (req: HTTPRequest) => {
   const merged: LyricsConfig = { ...current, ...updates };
 
   // 校验
-  if (!['lrclib', 'lrcapi', 'custom'].includes(merged.provider)) {
-    return jsonResponse({ error: 'provider 必须是 lrclib、lrcapi 或 custom' }, 400);
+  if (!['auto', 'qqmusic', 'netease', 'lrclib', 'lrcapi', 'custom'].includes(merged.provider)) {
+    return jsonResponse({ error: '不支持的歌词来源' }, 400);
   }
   if (merged.provider === 'custom' && !merged.customUrl) {
     return jsonResponse({ error: 'custom provider 必须提供 customUrl' }, 400);
@@ -87,12 +84,13 @@ router.get('/test-search', async (req: HTTPRequest) => {
   const q = parseQuery(req.query.replace(/\+/g, '%20'));
   const title = q.title || 'Bohemian Rhapsody';
   const artist = q.artist || 'Queen';
-  const result = cfg.provider === 'lrcapi'
-    ? await searchLrcapi(cfg, title, artist, '')
-    : await searchLrclib(cfg, title, artist, '', 0);
+  const report = await searchAllLyrics(cfg, title, artist, '', Number(q.duration) || 0);
   return jsonResponse({
-    success: !!result,
-    preview: result ? result.lyric : null,
+    success: !!report.result,
+    preview: report.result?.lyric ?? null,
+    detail: diagnosticMessage(report),
+    diagnostics: report.diagnostics,
+    query: report.query,
   });
 });
 

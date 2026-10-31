@@ -4,7 +4,7 @@ const CONFIG_KEY = 'lyrics_config';
 
 export interface LyricsConfig {
   enabled: boolean;
-  provider: 'lrclib' | 'lrcapi' | 'custom';
+  provider: 'auto' | 'qqmusic' | 'netease' | 'lrclib' | 'lrcapi' | 'custom';
   customUrl: string;
   lrcapiUrl: string;
   lrcapiAuth: string;
@@ -12,7 +12,7 @@ export interface LyricsConfig {
 
 export const DEFAULT_CONFIG: LyricsConfig = {
   enabled: false,
-  provider: 'lrclib',
+  provider: 'auto',
   customUrl: '',
   lrcapiUrl: '',
   lrcapiAuth: '',

@@ -1,5 +1,9 @@
 # Lyrics Search Plugin
 
+Roomtone fork: QQ Music, NetEase and LRCLIB run concurrently, with results preferred in that order. Single-provider and custom endpoints remain available. Filename/track-number/promotional-tag normalization precedes strict title, artist, version and duration validation. Search relaxation does not relax candidate validation. Available translations and romanization are retained.
+
+Failures distinguish HTTP status, provider business codes, timeout, network/format errors and no match. Cancellable host HTTP streams use a 3-second request limit and a 2 MB response cap. Concurrent identical searches share work and release it afterwards. The host must forward provider diagnostics to display detailed errors. Public endpoints require no API key but may impose access restrictions. Based on [the upstream plugin](https://github.com/songloft-org/songloft-plugin-lyrics).
+
 Automatically searches [lrclib.net](https://lrclib.net) or a compatible custom API when a song has no lyrics. The plugin registers as a server-side lyric provider, which the host calls when needed.
 
 ## Installation

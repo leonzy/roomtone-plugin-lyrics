@@ -1,22 +1,21 @@
 {
   "$schema": "https://raw.githubusercontent.com/songloft-org/plugin-toolchain/main/schemas/plugin.schema.json",
   "name": "歌词搜索",
-  "version": "2026.10.17.0",
-  "description": "从 lrclib.net 或自定义 API 自动搜索歌词，当歌曲无歌词时由服务端自动调用",
+  "version": "2026.10.31.0",
+  "description": "从 QQ音乐、网易云、LRCLIB 或自定义 API 搜索歌词，支持信息清洗与分来源失败原因",
   "author": "Songloft Team",
-  "homepage": "https://github.com/songloft-org/songloft-plugin-lyrics",
+  "homepage": "https://github.com/leonzy/roomtone-plugin-lyrics",
   "license": "Apache-2.0",
   "icon": "icon.svg",
   "entryPath": "lyrics",
   "main": "main.js",
-  "minHostVersion": "2.6.0",
+  "minHostVersion": "2.13.6",
   "renderEngine": "webview",
   "permissions": [
-    "storage"
+    "storage",
+    "net"
   ],
-  "updateUrl": "https://raw.githubusercontent.com/songloft-org/songloft-plugin-lyrics/main/plugin.json",
-  "download_url": "https://github.com/songloft-org/songloft-plugin-lyrics/releases/download/v2026.10.17.0/lyrics.jsplugin.zip",
-  "entryHash": "3ab32ad18d276bb3100d4ec7a826bfd674554436761f69c78e9dc60ee02f336e",
-  "zipHash": "0c935d071012ce48daa580becc8df59d1b60229ecf68309a263dadd1e5c10bf1",
+  "updateUrl": "https://raw.githubusercontent.com/leonzy/roomtone-plugin-lyrics/main/plugin.json",
+  "download_url": "https://github.com/leonzy/roomtone-plugin-lyrics/releases/download/v2026.10.31.0/lyrics.jsplugin.zip",
   "releaseSource": "be8e6c8d09e225f2942fc047c62f0201b08bea09"
 }

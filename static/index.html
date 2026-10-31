@@ -54,6 +54,9 @@ select{width:auto;min-width:120px;cursor:pointer}
     <div class="row">
       <label for="provider">提供商</label>
       <select id="provider" aria-label="歌词提供商">
+        <option value="auto">自动：QQ音乐 → 网易云 → LRCLIB</option>
+        <option value="qqmusic">QQ音乐</option>
+        <option value="netease">网易云音乐</option>
         <option value="lrclib">lrclib.net</option>
         <option value="lrcapi">LrcApi</option>
         <option value="custom">自定义 API</option>
@@ -103,7 +106,7 @@ async function load() {
   try {
     const cfg = await api('GET', '/config');
     $('enabled').checked = cfg.enabled || false;
-    $('provider').value = cfg.provider || 'lrclib';
+    $('provider').value = cfg.provider || 'auto';
     $('customUrl').value = cfg.customUrl || '';
     $('lrcapiUrl').value = cfg.lrcapiUrl || '';
     $('lrcapiAuth').value = cfg.lrcapiAuth || '';
@@ -159,11 +162,11 @@ async function testSearch() {
     const a = encodeURIComponent($('testArtist').value);
     const res = await api('GET', `/test-search?title=${t}&artist=${a}`);
     if (res.success) {
-      st.className = 'status ok'; st.textContent = '搜索成功';
+      st.className = 'status ok'; st.textContent = '搜索成功。' + (res.detail || '');
       pv.textContent = res.preview || '(无预览)';
       pv.style.display = 'block';
     } else {
-      st.className = 'status err'; st.textContent = '未找到歌词';
+      st.className = 'status err'; st.textContent = res.detail || '未找到歌词';
     }
   } catch (e) {
     st.className = 'status err'; st.textContent = '搜索失败: ' + e.message;

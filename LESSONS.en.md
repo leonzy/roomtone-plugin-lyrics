@@ -1,5 +1,9 @@
 # Development lessons
 
+## LYR-002: Verify real provider shapes, errors and metadata together
+
+On 2026-10-31 the deployed library searched an artist-prefixed title with promotional artist/album tags; LRCLIB failures were swallowed as 404. Automatic mode now normalizes metadata, concurrently queries QQ/NetEase/LRCLIB, validates title/artist/version/duration, bounds cancellable requests to 3 seconds and 2 MB, and merges identical work. QQ SearchAdaptor actually returns body.item_song.items; an old body.song.list fixture did not prove compatibility. All 22 plugin tests, types and package hashes pass. Deployed QuickJS returned QQ and NetEase lyrics in about 3 seconds while reporting the LRCLIB failure separately. Host diagnostics forwarding is also required. No audio playback or tag writes were initiated.
+
 ## LYR-001: Decode form-encoded spaces in lyric metadata queries
 
 - Scope: `songloft-org/songloft-plugin-lyrics#6`, host lyric searches and configuration-page test searches.

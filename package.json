@@ -1,6 +1,6 @@
 {
   "name": "songloft-plugin-lyrics",
-  "version": "2026.10.17.0",
+  "version": "2026.10.31.0",
   "private": true,
   "scripts": {
     "build": "songloft-plugin build",
@@ -10,8 +10,8 @@
     "validate": "node scripts/validate-build.mjs"
   },
   "devDependencies": {
-    "@songloft/plugin-builder": "^2.6.0",
-    "@songloft/plugin-sdk": "^2.6.0",
+    "@songloft/plugin-builder": "2.18.0",
+    "@songloft/plugin-sdk": "2.18.0",
     "typescript": "^5.0.0"
   }
 }
