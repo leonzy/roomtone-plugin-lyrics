@@ -31,6 +31,7 @@ test('cleans track numbers, audio extension, promotional tags and artist/title f
   assert.deepEqual(JSON.parse(JSON.stringify(f.normalizeMetadata(...metadata))), { title: '明明白白我的心', artist: '成龙', album: '', duration: 297 });
   assert.equal(f.normalizeMetadata('07.Arnica Montana _ Sea, Sand And Sun.wav', '', '', 449).artist, 'Arnica Montana');
   assert.equal(f.normalizeMetadata('01.A-B.flac', 'Real Artist', '', 200).title, 'A-B');
+  assert.equal(f.normalizeMetadata('2.0', 'Real Artist', '', 200).title, '2.0');
 });
 test('QQ returns Chinese LRC and translation, with bounded and cancelled streams', async () => {
   const f = fixture((url, opts) => url.includes('musicu') ? { data: { code: 0, search: { code: 0, data: { body: { item_song: { items: [{ mid: 'mid1', name: '明明白白我的心', singer: [{ name: '成龙' }], interval: 297 }] } } } } } } : { data: { code: 0, lyric: Buffer.from('[00:01.00]明明白白我的心').toString('base64'), trans: '[00:01.00]Translation' } });
@@ -85,4 +86,14 @@ test('identical concurrent requests share work and release the in-flight entry a
   assert.equal(f.calls.length, 3);
   await f.searchAllLyrics(config, ...metadata);
   assert.equal(f.calls.length, 6);
+});
+
+test('connection failures describe DNS, TLS and server disconnects without exposing URLs or credentials', async () => {
+  const f = fixture(url => { throw new Error(url.includes('musicu') ? 'lookup secret.internal no such host token=PRIVATE' : url.includes('163.com') ? 'x509 certificate invalid token=PRIVATE' : 'unexpected EOF token=PRIVATE'); });
+  const report = await f.searchAllLyrics(config, ...metadata);
+  const detail = f.diagnosticMessage(report);
+  assert.match(detail, /DNS 解析失败/);
+  assert.match(detail, /TLS 证书或握手失败/);
+  assert.match(detail, /连接被对端关闭/);
+  assert.doesNotMatch(detail, /PRIVATE|secret\.internal/);
 });

@@ -11,7 +11,7 @@ const compact = (s: string) => s.toLowerCase().replace(/[\s\p{P}\p{S}]/gu, '');
 class NoLyrics extends Error {}
 
 export function normalizeMetadata(title: string, artist: string, album: string, duration: number): Metadata {
-  title = title.trim().replace(/\.(?:mp3|flac|wav|ape|m4a|aac|dsf|dff)$/i, '').replace(/^\s*\d{1,3}\s*[.、)）_-]\s*/, '');
+  title = title.trim().replace(/\.(?:mp3|flac|wav|ape|m4a|aac|dsf|dff)$/i, '').replace(/^\s*\d{1,3}\s*[.、)）_-]\s*(?!\d)/, '');
   title = title.replace(/[【\[](?:[^\]】]*(?:无损|FLAC|MP3|高音质|车载|www\.|https?:)[^\]】]*)[】\]]/gi, '').trim();
   if (promotional.test(artist) || /^(?:unknown|unknown artist|未知|未知歌手|various artists|群星)$/i.test(artist.trim())) artist = '';
   if (promotional.test(album)) album = '';
@@ -166,7 +166,14 @@ export function searchAllLyrics(cfg: LyricsConfig, title: string, artist: string
       } catch (e) {
         if (e instanceof NoLyrics) return { result: null, diagnostic: { source, status: 'not_found', reason: e.message } };
         const raw = e instanceof Error ? e.message : '';
-        const reason = /timeout|deadline|timed out/i.test(raw) ? '请求超时' : /HTTP \d{3}|业务错误码|响应|搜索/.test(raw) ? raw.slice(0, 120) : '网络连接失败';
+        const reason = /timeout|deadline|timed out/i.test(raw) ? '请求超时'
+          : /permission|权限/i.test(raw) ? '歌词插件缺少网络权限'
+          : /max 8 HTTP streams|too many/i.test(raw) ? '并发请求达到上限，请稍后重试'
+          : /no such host|lookup|\bdns\b/i.test(raw) ? 'DNS 解析失败'
+          : /certificate|x509|\btls\b/i.test(raw) ? 'TLS 证书或握手失败'
+          : /connection refused/i.test(raw) ? '连接被拒绝'
+          : /\bEOF\b|connection reset|closed connection/i.test(raw) ? '连接被对端关闭'
+          : /HTTP \d{3}|业务错误码|响应|搜索/.test(raw) ? raw.slice(0, 120) : '网络连接失败';
         return { result: null, diagnostic: { source, status: 'error', reason } };
       }
     }));
