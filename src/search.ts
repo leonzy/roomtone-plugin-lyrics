@@ -11,6 +11,7 @@ const compact = (s: string) => s.toLowerCase().replace(/[\s\p{P}\p{S}]/gu, '');
 class NoLyrics extends Error {}
 
 export function normalizeMetadata(title: string, artist: string, album: string, duration: number): Metadata {
+  const promotionalArtist = promotional.test(artist);
   title = title.trim().replace(/\.(?:mp3|flac|wav|ape|m4a|aac|dsf|dff)$/i, '');
   const trackPrefix = /^\s*(?:\d{1,3}\s*[.、)）_-]\s*(?!\d)|0\d{1,2}\s+|\d{1,3}\s+(?=[\u3400-\u9fff]))/;
   const numberedFilename = trackPrefix.test(title);
@@ -26,7 +27,8 @@ export function normalizeMetadata(title: string, artist: string, album: string, 
     title = suffix[1].trim(); artist = suffix[2].trim();
   }
   const split = title.match(/^(.{1,60}?)\s*[-－—–]\s*(.+)$/) || title.match(/^(.{1,60}?)\s+_\s+(.+)$/);
-  if (split && (!artist.trim() || compact(artist) === compact(split[1]))) {
+  const explicitFilename = numberedFilename || promotionalArtist || /\s[-－—–_]\s/.test(title);
+  if (split && ((!artist.trim() && explicitFilename) || compact(artist) === compact(split[1]))) {
     artist = split[1].trim(); title = split[2].trim();
   }
   return { title, artist: artist.trim(), album: album.trim(), duration };

@@ -32,6 +32,8 @@ test('cleans track numbers, audio extension, promotional tags and artist/title f
   assert.equal(f.normalizeMetadata('07.Arnica Montana _ Sea, Sand And Sun.wav', '', '', 449).artist, 'Arnica Montana');
   assert.equal(f.normalizeMetadata('01.A-B.flac', 'Real Artist', '', 200).title, 'A-B');
   assert.equal(f.normalizeMetadata('2.0', 'Real Artist', '', 200).title, '2.0');
+  assert.equal(f.normalizeMetadata('Love-Game', '', '', 200).artist, '');
+  assert.equal(f.normalizeMetadata('Love-Game', '', '', 200).title, 'Love-Game');
   assert.deepEqual(JSON.parse(JSON.stringify(f.normalizeMetadata('02 存在（汪峰）.flac', '', '', 286))), { title: '存在', artist: '汪峰', album: '', duration: 286 });
   assert.equal(f.normalizeMetadata('01 存在（Live）', '', '', 286).title, '存在（Live）');
   assert.equal(f.normalizeMetadata('24 Hours', '', '', 286).title, '24 Hours');
